@@ -20,12 +20,13 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -38,10 +39,11 @@ import (
 )
 
 var (
-	cfgFile   string
-	start     string
-	end       string
-	noHeaders bool
+	cfgFile     string
+	start       string
+	end         string
+	noHeaders   bool
+	showWarning bool
 )
 
 func getLabels(result model.Value) []model.LabelName {
@@ -147,7 +149,7 @@ func instantCsv(result model.Value) {
 	w.WriteAll(rows)
 }
 
-func instantQuery(host, queryString, output string) {
+func instantQuery(host, queryString, output string, showWarning bool) {
 	client, err := api.NewClient(api.Config{
 		Address: host,
 	})
@@ -164,7 +166,7 @@ func instantQuery(host, queryString, output string) {
 		fmt.Printf("Error querying Prometheus: %v\n", err)
 		os.Exit(1)
 	}
-	if len(warnings) > 0 {
+	if len(warnings) > 0 && showWarning {
 		fmt.Printf("Warnings: %v\n", warnings)
 	}
 
@@ -315,11 +317,12 @@ var rootCmd = &cobra.Command{
 		host := viper.GetString("host")
 		step := viper.GetString("step")
 		output := viper.GetString("output")
+		showWarning := viper.GetBool("showWarning")
 		if start != "" {
 			r := getRange(step, start, end)
 			rangeQuery(host, query, output, r)
 		} else {
-			instantQuery(host, query, output)
+			instantQuery(host, query, output, showWarning)
 		}
 	},
 }
@@ -346,6 +349,8 @@ func init() {
 	rootCmd.PersistentFlags().String("output", "", "Override the default output format (graph for range queries, table for instant queries and metric names). Options: json,csv")
 	viper.BindPFlag("output", rootCmd.PersistentFlags().Lookup("output"))
 	rootCmd.PersistentFlags().BoolVar(&noHeaders, "no-headers", false, "Disable table headers for instant queries")
+	rootCmd.PersistentFlags().BoolVar(&showWarning, "showWarning", false, "true for showing warnings")
+	viper.BindPFlag("showWarning", rootCmd.PersistentFlags().Lookup("showWarning"))
 
 }
 
@@ -371,6 +376,6 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println(err)
+		//fmt.Println(err)
 	}
 }
